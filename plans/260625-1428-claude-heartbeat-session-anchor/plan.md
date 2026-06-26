@@ -1,7 +1,7 @@
 ---
 title: "Claude Heartbeat Session Anchor Workflow"
 description: "Daily GitHub Actions heartbeat anchoring the Claude 5h window at ~05:09 GMT+7 to yield 3 usage sessions across a split workday"
-status: in-progress
+status: closed-infeasible
 priority: P2
 branch: "main"
 tags: [github-actions, claude-code, automation]
@@ -13,6 +13,14 @@ source: skill
 ---
 
 # Claude Heartbeat Session Anchor Workflow
+
+## Outcome — CLOSED, scheme infeasible (2026-06-26)
+
+The make-or-break premise (Open question #1) was **empirically disproven**. On 2026-06-26 two automated warmups both ran successfully — the GitHub Actions `claude -p "hi"` at 06:38 GMT+7 (run `28207382111`, real reply `Hi! How can I help you today?`) and a separately-existing native Claude Code cloud routine `daily-work-heartbeat` at 05:31 GMT+7 — yet **Settings → Usage still showed the interactive "Current session" anchored at 09:30** (reset ~14:30), i.e. on the user's own first message.
+
+Root cause: on the Max plan there is **one shared interactive 5h "Current session" window**, and it anchors only on a genuine **interactive** first message. **Automated runs (CI `setup-token` heartbeats AND native cloud routines) do not anchor or count toward it.** No automated, machine-independent method can shift the interactive reset boundary. Local anchoring is also ruled out (Mac powered off overnight). Therefore the goal (pre-anchor S1 while asleep → 3 sessions) is **not achievable** as designed.
+
+Actions taken on closure: native routine `daily-work-heartbeat` paused; GitHub Actions heartbeat workflow removed. See Validation Log Session 2.
 
 ## Overview
 
@@ -44,8 +52,8 @@ Source brainstorm + timing verification: [`../reports/brainstorm-260625-1402-cla
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Provision Workflow](./phase-01-provision-workflow.md) | Done (`e23daeb`, 2026-06-25) |
-| 2 | [Activate and Verify](./phase-02-activate-and-verify.md) | Pending (user-owned) |
+| 1 | [Provision Workflow](./phase-01-provision-workflow.md) | Done (`e23daeb`, 2026-06-25), then **reverted** on closure (2026-06-26) |
+| 2 | [Activate and Verify](./phase-02-activate-and-verify.md) | **Failed** — verification disproved the premise (2026-06-26) |
 
 Phase 2 depends on Phase 1.
 
@@ -76,7 +84,7 @@ None (no other plans; fresh repo with only `README.md`).
 
 ## Open questions
 
-1. Does a GitHub Actions (CI-token) heartbeat actually move the interactive usage window on this account? → **still open**, confirm in Phase 2 (Settings → Usage). This is the make-or-break premise.
+1. Does a GitHub Actions (CI-token) heartbeat actually move the interactive usage window on this account? → **RESOLVED: NO** (2026-06-26). Neither the CI heartbeat nor a native cloud routine anchored the interactive Current session; only the user's own first interactive message does. Premise dead → scheme closed.
 2. Does a `GITHUB_TOKEN` keep-alive commit actually reset GitHub's 60-day timer? → **uncertain**; monitor at ~50 days, manual re-arm as fallback.
 
 _(Resolved in validation: anchor = 05:09; alerting = email-only.)_
@@ -98,6 +106,20 @@ _(Resolved in validation: anchor = 05:09; alerting = email-only.)_
 **Phase propagation**
 - Phase 1: anchor 05:07→05:09, keep-alive step added, risks updated. Marker added.
 - Phase 2: anchor-margin reference 05:07→05:09; F2 mitigation note updated to reflect keep-alive.
+
+### Session 2 — 2026-06-26 (empirical verification → FAIL, plan closed)
+
+**Setup at test time:** Both warmups live and successful the same morning.
+- GitHub Actions run `28207382111`: scheduled, success, 06:38 GMT+7 (cron 05:09 + ~1h29 GitHub drift). Log line 129 shows real model reply `Hi! How can I help you today?` → token valid, message genuinely sent.
+- Native Claude Code cloud routine `daily-work-heartbeat` (pre-existing, under Phuoc·Max account): ran today 05:31 GMT+7, success; ~1 week of green daily runs.
+
+**Observation (decisive):** Settings → Usage at ~10:30 GMT+7 — **Current session: "Resets in 3 hr 53 min" (≈14:30) = anchored 09:30** (user's first interactive message). Weekly "All models" resets Thu 09:00. So neither 05:31 nor 06:38 automated warmup touched the interactive Current session.
+
+**Conclusion:** Premise false. Max plan = one shared interactive 5h window; anchors only on a genuine interactive first message; automated runs (CI setup-token + native routine) are excluded. Goal infeasible by any machine-independent method (local ruled out — Mac off overnight).
+
+**Cross-repo check:** `vdsmon/claude-warmup` (GitHub Actions + setup-token) and `tappress/claude-code-warmup` (Vercel cron + Anthropic API, same setup-token) both use the identical mechanism this plan used → same failure. vdsmon README (2026-04-01) points to native Claude Code Web scheduled tasks as the "native" path — which is exactly the `daily-work-heartbeat` routine that also failed here.
+
+**Closure actions:** routine paused (toggle → Paused); GitHub Actions heartbeat workflow + `last-heartbeat.txt` removed; plan status → `closed-infeasible`.
 
 ### Whole-Plan Consistency Sweep
 - Re-read `plan.md`, `phase-01`, `phase-02`, red-team review. Operative anchor is now `05:09`/`09 22` everywhere it drives behavior (Overview, Key decisions, Phase 1 YAML, Phase 2 margin, DST example, description). F2 described consistently as "mitigated by keep-alive, residual uncertainty".
